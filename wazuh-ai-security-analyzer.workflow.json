@@ -4,33 +4,33 @@
     {
       "parameters": {
         "content": "## Wazuh AI Security Analyzer\n\nReceives Wazuh webhook alerts (level >= 9 by default), sends the full payload to an LLM for analysis, then delivers an enriched Slack and/or Telegram message with AI risk assessment + investigation commands.\n\n**Quick start:**\n1. Set up credentials and the webhook (see \"Prerequisites & Resources\" sticky)\n2. Edit the **Config** node: thresholds, timezone, model, Telegram IDs\n3. Customize the infrastructure context block in **Extract Alert** for your environment, this is what makes the analysis actually useful\n4. Set the Slack webhook URL in **Slack AI Alert** and/or the Telegram token+chat ID in Config for **Telegram AI Alert**\n5. Activate the workflow and point your Wazuh ossec.conf integration at `/webhook/wazuh-alert`\n\n**Default model:** claude-haiku-4-5-20251001 (~$0.001/alert). Switch to claude-sonnet-4-5, GPT-4o, or a local Ollama model for deeper analysis. See \"Extract & Analyze\" sticky.\n\n**Built by Agenius AI Labs** | github.com/Agenius-AI-Labs",
-        "height": 432,
-        "width": 600,
+        "height": 640,
+        "width": 1000,
         "color": 4
       },
-      "id": "00000000-0003-0003-0003-000000000001",
+      "id": "63d03c2b-d5eb-4813-afd6-138db0d03591",
       "name": "Setup Notes",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        768,
-        -384
+        960,
+        80
       ]
     },
     {
       "parameters": {
         "content": "## Prerequisites & Resources\n\nEverything a first-time user needs. Each link goes to the exact setup doc.\n\n**1. n8n** (orchestrator, self-hosted or cloud)\nhttps://docs.n8n.io/hosting/installation/\nCloud signup: https://n8n.io/cloud/\n\n**2. Wazuh SIEM** (alert source)\nInstall: https://documentation.wazuh.com/current/installation-guide/index.html\nCustom integration webhook: https://documentation.wazuh.com/current/user-manual/manager/manual-integration.html\n\n**3. LLM API key, pick one:**\n- Anthropic Claude (recommended): https://docs.anthropic.com/en/api/getting-started\n- OpenAI: https://platform.openai.com/docs/quickstart\n- Ollama (local, free): https://ollama.com/download\nSee \"Extract & Analyze\" sticky for swap instructions.\n\n**4. Notification channel, pick one or both:**\n- Slack incoming webhook: https://api.slack.com/messaging/webhooks\n  Recommend creating a dedicated #security-alerts channel first.\n- Telegram bot: https://core.telegram.org/bots/tutorial\n  Create the bot via @BotFather, get your chat ID via @userinfobot.\n\nNo paid services required to run this. Anthropic/OpenAI are pay-per-use (alerts cost a fraction of a cent). Ollama runs fully local.",
-        "height": 432,
-        "width": 656,
+        "height": 656,
+        "width": 864,
         "color": "#2E3D7A"
       },
-      "id": "3f7e1c3f-1c5a-4e6d-be8c-a7fc1a1a7774",
+      "id": "e248439d-41fe-4bf8-b979-2881bec667f6",
       "name": "Prerequisites",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        96,
-        -384
+        80,
+        64
       ]
     },
     {
@@ -39,13 +39,13 @@
         "path": "wazuh-alert",
         "options": {}
       },
-      "id": "00000000-0003-0003-0003-000000000002",
+      "id": "bf185202-c7c1-4df7-ac1e-197bb4264a25",
       "name": "Wazuh Alert Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
         272,
-        320
+        912
       ],
       "webhookId": "wazuh-alert-ai-public"
     },
@@ -93,13 +93,13 @@
         },
         "options": {}
       },
-      "id": "00000000-0003-0003-0003-000000000003",
+      "id": "67499f4c-a667-485e-9714-8ac48cb9520e",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        624,
-        320
+        592,
+        912
       ]
     },
     {
@@ -126,37 +126,37 @@
         },
         "options": {}
       },
-      "id": "00000000-0003-0003-0003-000000000004",
+      "id": "40bea6cb-9932-479d-b6af-3126e1ecf687",
       "name": "IF Level Qualifies",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        784,
-        320
+        736,
+        912
       ]
     },
     {
       "parameters": {},
-      "id": "00000000-0003-0003-0003-000000000005",
+      "id": "ee09f514-4ce5-4e70-8228-afa7909f566b",
       "name": "Stop - Below Threshold",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        720,
-        464
+        688,
+        1072
       ]
     },
     {
       "parameters": {
         "jsCode": "const item = $input.first().json;\nconst alert = $('Wazuh Alert Webhook').first().json.body;\n\n// Core alert fields\nconst level = parseInt(alert?.rule?.level ?? 0);\nconst description = alert?.rule?.description ?? 'Unknown rule';\nconst agentName = alert?.agent?.name ?? 'unknown';\nconst agentIp = alert?.agent?.ip ?? 'N/A';\nconst srcIp = alert?.data?.srcip ?? null;\nconst dstUser = alert?.data?.dstuser ?? null;\nconst srcUser = alert?.data?.srcuser ?? null;\nconst command = alert?.data?.command ?? null;\nconst groups = Array.isArray(alert?.rule?.groups)\n  ? alert.rule.groups.join(', ')\n  : (alert?.rule?.groups ?? 'N/A');\nconst ruleId = alert?.rule?.id ?? 'N/A';\nconst location = alert?.location ?? 'N/A';\nconst rawTs = alert?.timestamp ?? new Date().toISOString();\nconst tz = item.timezone ?? 'America/New_York';\nconst ts = new Date(rawTs).toLocaleString('en-US', { timeZone: tz, hour12: false });\nconst isCritical = level >= (item.criticalLevel ?? 12);\n\n// ============================================================\n// CUSTOMIZE ME: Infrastructure context block\n// Replace the EXAMPLE below with details about YOUR environment.\n// The more specific (hostnames, services, normal patterns), the\n// better the LLM analysis. Keep the leading \"Infrastructure context\"\n// label so the model picks it up.\n// ============================================================\nconst infraContext = `Infrastructure context (EXAMPLE - replace with your own):\n- 3-node home lab cluster: node-a (10.0.0.10, primary), node-b (10.0.0.11), node-c (10.0.0.12)\n- Key services: vector-db (10.0.0.20), postgres (10.0.0.21), automation-server / n8n (10.0.0.22), siem / wazuh (10.0.0.30)\n- Edge: WireGuard mesh VPN for admin, Cloudflare Tunnel for selective external services\n- Internal subnet: 10.0.0.0/24, only n8n webhooks reachable from the public internet\n- Active response DISABLED, monitoring only, no automated blocking`;\n// ============================================================\n// END CUSTOMIZE ME\n// ============================================================\n\nconst systemPrompt = `You are a security analyst reviewing a Wazuh SIEM alert. Respond ONLY with a valid JSON object, no text outside the JSON, no markdown code blocks.\n\n${infraContext}\n\nResponse schema (all fields required):\n{\n  \"risk_level\": \"low|medium|high|critical\",\n  \"likely_cause\": \"one sentence, most probable explanation given this specific infrastructure\",\n  \"is_likely_false_positive\": true or false,\n  \"fp_reason\": \"if false positive, brief reason; otherwise empty string\",\n  \"recommended_action\": [\"action 1\", \"action 2\"],\n  \"investigate_commands\": [\"bash command 1\", \"bash command 2\"]\n}`;\n\nconst userPrompt = `Analyze this Wazuh alert:\n\nHost: ${agentName} (${agentIp})\nRule ID: ${ruleId} | Level: ${level}\nDescription: ${description}\nGroups: ${groups}\nSource IP: ${srcIp ?? 'N/A'}\nDest User: ${dstUser ?? 'N/A'} | Source User: ${srcUser ?? 'N/A'}\nCommand: ${command ?? 'N/A'}\nLocation (log file): ${location}\nTimestamp: ${ts}\n\nFull alert JSON:\n${JSON.stringify(alert, null, 2)}`;\n\nconst claudeBodyObj = {\n  model: item.claudeModel ?? 'claude-haiku-4-5-20251001',\n  max_tokens: 700,\n  system: systemPrompt,\n  messages: [{ role: 'user', content: userPrompt }]\n};\n\nreturn [{\n  json: {\n    // Config passthrough (all 6 values)\n    minAlertLevel: item.minAlertLevel,\n    criticalLevel: item.criticalLevel,\n    timezone: item.timezone,\n    claudeModel: item.claudeModel,\n    telegramBotToken: item.telegramBotToken,\n    telegramChatId: item.telegramChatId,\n    // Alert fields\n    level,\n    description,\n    agentName,\n    agentIp,\n    srcIp,\n    dstUser,\n    srcUser,\n    command,\n    groups,\n    ruleId,\n    location,\n    ts,\n    isCritical,\n    // LLM API body (object, serialized by HTTP Request node)\n    claudeBodyObj\n  }\n}];"
       },
-      "id": "00000000-0003-0003-0003-000000000006",
+      "id": "53c9655f-b86d-4f0b-a1e7-2623ade279c1",
       "name": "Extract Alert",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1136,
-        304
+        1072,
+        864
       ]
     },
     {
@@ -179,26 +179,26 @@
         "jsonBody": "={{ JSON.stringify($json.claudeBodyObj) }}",
         "options": {}
       },
-      "id": "00000000-0003-0003-0003-000000000007",
+      "id": "605f8924-0a1b-4a51-8a15-ae5ef166998c",
       "name": "Claude Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1296,
-        304
+        1248,
+        864
       ]
     },
     {
       "parameters": {
         "jsCode": "const llmResponse = $input.first().json;\nconst alert = $('Extract Alert').item.json;\n\n// Parse LLM JSON response. Supports Anthropic, OpenAI, and Ollama response shapes.\nconst rawText = llmResponse.content?.[0]?.text\n  ?? llmResponse.choices?.[0]?.message?.content\n  ?? llmResponse.message?.content\n  ?? '{}';\n\nlet analysis = {};\ntry {\n  const cleaned = rawText\n    .replace(/^```json\\s*/m, '')\n    .replace(/^```\\s*/m, '')\n    .replace(/\\s*```$/m, '')\n    .trim();\n  analysis = JSON.parse(cleaned);\n} catch(e) {\n  analysis = {\n    risk_level: 'unknown',\n    likely_cause: 'AI analysis unavailable, review alert manually.',\n    is_likely_false_positive: false,\n    fp_reason: '',\n    recommended_action: ['Check Wazuh dashboard for full alert context'],\n    investigate_commands: []\n  };\n}\n\n// ============================================================\n// CUSTOMIZE ME: Wazuh dashboard URL used in notification messages\n// ============================================================\nconst dashboardUrl = 'https://your-wazuh-dashboard.example.com';\n// ============================================================\n\nconst level = alert.level;\nconst riskEmojis = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢', unknown: '⚪' };\nconst alertEmoji = level >= 12 ? '🔴' : level >= 9 ? '🟠' : '🟡';\nconst alertLabel = level >= 12 ? 'CRITICAL' : level >= 9 ? 'HIGH' : 'WARNING';\nconst riskEmoji = riskEmojis[analysis.risk_level?.toLowerCase()] ?? '⚪';\nconst riskLabel = (analysis.risk_level ?? 'unknown').toUpperCase();\n\nfunction buildMessage(platform) {\n  const lines = [\n    `${alertEmoji} *${alertLabel}* | Level ${level} | *${alert.agentName}*`,\n    `*Rule:* ${alert.description}`,\n  ];\n\n  if (alert.srcIp) lines.push(`*Source IP:* ${alert.srcIp}`);\n  if (alert.dstUser) lines.push(`*User:* ${alert.dstUser}`);\n  if (alert.command) lines.push(`*Command:* \\`${alert.command}\\``);\n  lines.push(`*Time:* ${alert.ts}`);\n\n  lines.push('', `${riskEmoji} *AI: ${riskLabel}*`);\n  lines.push(`${analysis.likely_cause}`);\n\n  if (analysis.is_likely_false_positive) {\n    lines.push(`⚠️ *Likely false positive*: ${analysis.fp_reason}`);\n  }\n\n  if ((analysis.recommended_action ?? []).length > 0) {\n    lines.push('', '📋 *Actions:*');\n    for (const a of analysis.recommended_action) {\n      lines.push(`• ${a}`);\n    }\n  }\n\n  if ((analysis.investigate_commands ?? []).length > 0) {\n    lines.push('', '🔍 *Investigate:*');\n    for (const cmd of analysis.investigate_commands) {\n      lines.push(`\\`${cmd}\\``);\n    }\n  }\n\n  const dashboardLink = platform === 'slack'\n    ? `<${dashboardUrl}|Wazuh Dashboard>`\n    : `[Wazuh Dashboard](${dashboardUrl})`;\n  lines.push('', dashboardLink);\n\n  return lines.join('\\n');\n}\n\nreturn [{\n  json: {\n    slackMessage: buildMessage('slack'),\n    telegramMessage: buildMessage('telegram'),\n    level: alert.level,\n    agentName: alert.agentName,\n    riskLevel: analysis.risk_level\n  }\n}];"
       },
-      "id": "10c54f94-f6c6-4396-8684-284522785bd3",
+      "id": "1275555c-48bf-416d-890c-6601929df719",
       "name": "Format AI Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1600,
-        304
+        1568,
+        848
       ]
     },
     {
@@ -214,9 +214,9 @@
       "typeVersion": 4.4,
       "position": [
         1776,
-        240
+        768
       ],
-      "id": "eb1d2e53-0ea7-4966-813c-7dd1020cee28",
+      "id": "45b061bf-06df-4cd3-ba9e-e1042db73d5e",
       "name": "Slack AI Alert"
     },
     {
@@ -232,74 +232,170 @@
       "typeVersion": 4.4,
       "position": [
         1776,
-        400
+        944
       ],
-      "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+      "id": "fa535c48-b92f-4594-930f-e1e0a74983b1",
       "name": "Telegram AI Alert"
     },
     {
       "parameters": {
-        "content": "## Wazuh Incoming Alert Webhook\n\nThis webhook receives Wazuh alerts in real time. Configure your Wazuh manager to POST every alert (or a filtered subset) here.\n\n**1. Get the webhook URL** from the node after saving the workflow:\n- Production: `https://<your-n8n-host>/webhook/wazuh-alert`\n- Test: `https://<your-n8n-host>/webhook-test/wazuh-alert`\n\n**2. Add the integration to Wazuh** by editing `/var/ossec/etc/ossec.conf` and adding inside `<ossec_config>`:\n\n```xml\n<integration>\n  <name>custom-n8n</name>\n  <hook_url>https://your-n8n-host/webhook/wazuh-alert</hook_url>\n  <level>9</level>\n  <alert_format>json</alert_format>\n</integration>\n```\n\n**3. Create the integration script** at `/var/ossec/integrations/custom-n8n` (chmod 750, owner root:wazuh). Wazuh ships sample scripts you can adapt, see:\nhttps://documentation.wazuh.com/current/user-manual/manager/integration-with-external-apis.html\n\n**4. Restart Wazuh:** `systemctl restart wazuh-manager`\n\n**Tip:** start with `<level>9</level>` in ossec.conf, then tune `minAlertLevel` in the Config node to fine-tune what actually reaches the LLM.",
-        "height": 624,
+        "content": "## Wazuh Incoming Alert Webhook\n\nThis webhook receives Wazuh alerts in real time. Configure your Wazuh manager to POST every alert (or a filtered subset) here.\n\n",
+        "height": 512,
         "width": 448,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        96,
-        64
+        80,
+        736
       ],
       "typeVersion": 1,
-      "id": "be62f3fa-553e-456a-b97a-da87b0e99b8c",
+      "id": "ee8dc0ae-1696-46f9-b0f2-6c71a3b4f3e6",
       "name": "Sticky - Webhook"
     },
     {
       "parameters": {
-        "content": "## Configuration & Qualification\n\nEdit the **Config** node to tune behavior. All fields are passed downstream to every node.\n\n**`minAlertLevel`** (default: 9): Wazuh alerts below this level are silently dropped at the IF node, cheap cost control. Increase to 10-11 in noisy environments.\n\n**`criticalLevel`** (default: 12): Alerts at or above this get the red 🔴 emoji + CRITICAL label in the message.\n\n**`timezone`** (default: America/New_York): IANA timezone string for the human-readable timestamp.\n\n**`claudeModel`** (default: claude-haiku-4-5-20251001): LLM model to use. See \"Extract & Analyze\" for alternatives.\n\n**`telegramBotToken`** + **`telegramChatId`**: fill these in if using Telegram. Leave defaults and delete the Telegram branch if Slack-only.\n\n**`IF Level Qualifies`** node: already wired to drop anything below `minAlertLevel`. The \"Stop - Below Threshold\" branch is a deliberate no-op so you can swap in metrics / logging later if you want to track suppressed alerts.\n\n**To test:** click \"Listen for test event\" on the Webhook node, then either trigger a real Wazuh alert or POST a sample JSON payload with curl.",
+        "content": "## Configuration & Qualification\n\nEdit the **Config** node to tune behavior. All fields are passed downstream to every node.\n\n",
+        "height": 512,
+        "width": 432,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        544,
+        736
+      ],
+      "typeVersion": 1,
+      "id": "d36e9ce0-80af-414c-861b-242550acd207",
+      "name": "Sticky - Config"
+    },
+    {
+      "parameters": {
+        "content": "## Extract & Analyze\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe **Extract Alert** node builds the LLM prompt. The infrastructure context block (clearly marked with `===` comment banners) contains an EXAMPLE lab. Replace it with your own environment. The more specific (hostnames, services, normal patterns), the better the analysis.\n\nThe **Claude Analysis** node is preconfigured for Anthropic. Swap as needed:\n\n",
+        "height": 512,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        992,
+        736
+      ],
+      "typeVersion": 1,
+      "id": "4cc89e92-672f-47e3-a546-53096d299cb7",
+      "name": "Sticky - Extract Analyze"
+    },
+    {
+      "parameters": {
+        "content": "## Format & Notify\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n**Format AI Message** parses the LLM JSON response and builds both a Slack and Telegram message string. Both notification nodes run in parallel from the same output.\n\n",
+        "height": 512,
+        "width": 480,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1488,
+        736
+      ],
+      "typeVersion": 1,
+      "id": "15c692a7-f3d4-40d2-8cee-07fdc7feb7e4",
+      "name": "Sticky - Format Notify"
+    },
+    {
+      "parameters": {
+        "content": "## Extract & Analyze\n\nThe **Extract Alert** node builds the LLM prompt. The infrastructure context block (clearly marked with `===` comment banners) contains an EXAMPLE lab. Replace it with your own environment. The more specific (hostnames, services, normal patterns), the better the analysis.\n\nThe **Claude Analysis** node is preconfigured for Anthropic. Swap as needed:\n\n**Anthropic Claude (default)**\n- URL: `https://api.anthropic.com/v1/messages`\n- Auth: Header Auth credential named `Anthropic API`, header `x-api-key`, value = your key\n- Extra header: `anthropic-version: 2023-06-01`\n- Models: `claude-haiku-4-5-20251001` (cheap), `claude-sonnet-4-5` (deeper)\n\n**OpenAI swap**\n- URL: `https://api.openai.com/v1/chat/completions`\n- Auth: Header Auth credential, header `Authorization`, value `Bearer YOUR_OPENAI_KEY`\n- Replace `claudeBodyObj` in Extract Alert with:\n```\n{\n  model: 'gpt-4o-mini',\n  max_tokens: 700,\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userPrompt }\n  ]\n}\n```\n- The Format AI Message node already handles OpenAI's response shape, no further edits needed.\n\n**Ollama swap (local, free)**\n- URL: `http://<ollama-host>:11434/api/chat`\n- No auth needed\n- Replace `claudeBodyObj` in Extract Alert with:\n```\n{\n  model: 'llama3.1:8b',\n  stream: false,\n  format: 'json',\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userPrompt }\n  ]\n}\n```\n- Format AI Message already handles Ollama's response shape.\n- Recommended models: `llama3.1:8b`, `qwen2.5:7b`, `mistral:7b`",
+        "height": 1168,
+        "width": 448,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2528,
+        464
+      ],
+      "typeVersion": 1,
+      "id": "8edeb63a-85b3-478c-ac0b-8443c46db91f",
+      "name": "Sticky - Extract Analyze1"
+    },
+    {
+      "parameters": {
+        "content": "## Configuration & Qualification\n\nEdit the **Config** node to tune behavior. All fields are passed downstream to every node.\n\n**`minAlertLevel`** (default: 9): Wazuh alerts below this level are silently dropped at the IF node, cheap cost control. Increase to 10-11 in noisy environments or configure another alert notification and triage fork.\n\n**`criticalLevel`** (default: 12): Alerts at or above this get the red 🔴 emoji + CRITICAL label in the message.\n\n**`timezone`** (default: America/New_York): IANA timezone string for the human-readable timestamp.\n\n**`claudeModel`** (default: claude-haiku-4-5-20251001): LLM model to use. See \"Extract & Analyze\" for alternatives.\n\n**`telegramBotToken`** + **`telegramChatId`**: fill these in if using Telegram. Leave defaults and delete the Telegram branch if Slack-only.\n\n**`IF Level Qualifies`** node: already wired to drop anything below `minAlertLevel`. The \"Stop - Below Threshold\" branch is a deliberate no-op so you can swap in metrics / logging later if you want to track suppressed alerts.\n\n**To test:** click \"Listen for test event\" on the Webhook node, then either trigger a real Wazuh alert or POST a sample JSON payload with curl.",
         "height": 624,
         "width": 448,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        560,
-        64
+        2528,
+        -176
       ],
       "typeVersion": 1,
-      "id": "d933dddd-d4b2-4b47-b81a-820f63e4bb59",
-      "name": "Sticky - Config"
+      "id": "569ea38a-1025-4fcf-a162-762c992cb643",
+      "name": "Sticky - Config1"
     },
     {
       "parameters": {
-        "content": "## Extract & Analyze\n\nThe **Extract Alert** node builds the LLM prompt. The infrastructure context block (clearly marked with `===` comment banners) contains an EXAMPLE lab. Replace it with your own environment. The more specific (hostnames, services, normal patterns), the better the analysis.\n\nThe **Claude Analysis** node is preconfigured for Anthropic. Swap as needed:\n\n**Anthropic Claude (default)**\n- URL: `https://api.anthropic.com/v1/messages`\n- Auth: Header Auth credential named `Anthropic API`, header `x-api-key`, value = your key\n- Extra header: `anthropic-version: 2023-06-01`\n- Models: `claude-haiku-4-5-20251001` (cheap), `claude-sonnet-4-5` (deeper)\n\n**OpenAI swap**\n- URL: `https://api.openai.com/v1/chat/completions`\n- Auth: Header Auth credential, header `Authorization`, value `Bearer YOUR_OPENAI_KEY`\n- Replace `claudeBodyObj` in Extract Alert with:\n```\n{\n  model: 'gpt-4o-mini',\n  max_tokens: 700,\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userPrompt }\n  ]\n}\n```\n- The Format AI Message node already handles OpenAI's response shape, no further edits needed.\n\n**Ollama swap (local, free)**\n- URL: `http://<ollama-host>:11434/api/chat`\n- No auth needed\n- Replace `claudeBodyObj` in Extract Alert with:\n```\n{\n  model: 'llama3.1:8b',\n  stream: false,\n  format: 'json',\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userPrompt }\n  ]\n}\n```\n- Format AI Message already handles Ollama's response shape.\n- Recommended models: `llama3.1:8b`, `qwen2.5:7b`, `mistral:7b`",
-        "height": 624,
-        "width": 480,
+        "content": "## Wazuh Incoming Alert Webhook\n\nThis webhook receives Wazuh alerts in real time. Configure your Wazuh manager to POST every alert (or a filtered subset) here.\n\n**1. Get the webhook URL** from the node after saving the workflow:\n- Production: `https://<your-n8n-host>/webhook/wazuh-alert`\n- Test: `https://<your-n8n-host>/webhook-test/wazuh-alert`\n\n**2. Add the integration to Wazuh** by editing `/var/ossec/etc/ossec.conf` and adding inside `<ossec_config>`:\n\n```xml\n<integration>\n  <name>custom-n8n</name>\n  <hook_url>https://your-n8n-host/webhook/wazuh-alert</hook_url>\n  <level>9</level>\n  <alert_format>json</alert_format>\n</integration>\n```\n\n**3. Create the integration script** at `/var/ossec/integrations/custom-n8n` (chmod 750, owner root:wazuh). Wazuh ships sample scripts you can adapt, see:\nhttps://documentation.wazuh.com/current/user-manual/manager/integration-with-external-apis.html\n\n**4. Restart Wazuh:** `systemctl restart wazuh-manager`\n\n**Tip:** start with `<level>9</level>` in ossec.conf, then tune `minAlertLevel` in the Config node to fine-tune what actually reaches the LLM.",
+        "height": 928,
+        "width": 448,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1024,
-        64
+        2064,
+        -176
       ],
       "typeVersion": 1,
-      "id": "a0941ab2-a98e-4deb-9e2d-e9c448f408d6",
-      "name": "Sticky - Extract Analyze"
+      "id": "06fc5cda-fbba-46e0-90dc-18453e1a8f1b",
+      "name": "Sticky - Webhook1"
     },
     {
       "parameters": {
         "content": "## Format & Notify\n\n**Format AI Message** parses the LLM JSON response and builds both a Slack and Telegram message string. Both notification nodes run in parallel from the same output.\n\n**Slack setup**\n1. Create an incoming webhook: https://api.slack.com/messaging/webhooks\n2. Paste the webhook URL into the **Slack AI Alert** node's `URL` field\n3. Recommend a dedicated #security-alerts channel\n\n**Telegram setup**\n1. Message @BotFather on Telegram, run `/newbot`, save the bot token\n2. Message @userinfobot to get your chat ID (or a group chat ID)\n3. Add your bot to the target chat or group\n4. Set `telegramBotToken` and `telegramChatId` in the **Config** node\n5. Bot API docs: https://core.telegram.org/bots/api#sendmessage\n\n**Using only one channel?**\nDelete the branch you don't want. The Format node has no dependency on either notification node, removing one will not break the workflow.\n\n**Want SMS, PagerDuty, Discord, email?**\nAdd another HTTP Request node downstream of Format AI Message. Discord uses Slack-compatible markdown and can reuse `$json.slackMessage` directly. PagerDuty needs the Events API v2 envelope, wrap accordingly.",
-        "height": 624,
-        "width": 480,
+        "height": 864,
+        "width": 448,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1520,
-        64
+        2064,
+        768
       ],
       "typeVersion": 1,
-      "id": "11be93b2-8437-4fdd-aec7-b6aceaaf32dc",
-      "name": "Sticky - Format Notify"
+      "id": "a2d87c65-32dc-41c9-8fe6-f5d8f01d5439",
+      "name": "Sticky - Format Notify1"
+    },
+    {
+      "parameters": {
+        "content": "# Node Configuration Details \n",
+        "height": 1984,
+        "width": 1056,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2000,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "4961d3a5-c2fb-4a57-9da8-a612f3c18e29",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## ⚡ Built by Michael Frostbutter\n\n**🔗 Resources**\n- 🌐 Website: https://ageniusailabs.com\n- 📺 YouTube: https://youtube.com/@AGeniusLabs\n- 💻 GitHub: https://github.com/Mfrostbutter/Wazuh-AI-Security-Analyzer\n\n**💬 Found this useful?**\nStar the repo, subscribe on YouTube, share with someone who'd build with it.\n\n**📜 MIT licensed.** Fork it, modify it, ship it. Attribution appreciated.",
+        "height": 352,
+        "width": 752,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        640,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "b07e9aab-e262-4e00-af5b-1224749e0d22",
+      "name": "Sticky Note1"
     }
   ],
   "pinData": {},
@@ -385,13 +481,16 @@
   },
   "active": false,
   "settings": {
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false,
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
   },
+  "versionId": "1d75978e-7424-47fa-9ca0-898e30652a63",
   "meta": {
-    "templateCredsSetupCompleted": false
+    "instanceId": "895500a397a3e801b63ba89a7767be9b5fd9a0d0cae8bd221476442daa439321"
   },
+  "nodeGroups": [],
+  "id": "t9G3c0UUfyNej1Mf",
   "tags": [
     {
       "updatedAt": "2026-03-20T00:32:18.838Z",
@@ -418,9 +517,9 @@
       "name": "monitoring"
     },
     {
-      "updatedAt": "2026-05-15T00:00:00.000Z",
-      "createdAt": "2026-05-15T00:00:00.000Z",
-      "id": "TmPL8t9pKwQxZv2y",
+      "updatedAt": "2026-05-15T15:28:32.498Z",
+      "createdAt": "2026-05-15T15:28:32.498Z",
+      "id": "LIJh4M9Zbe9nwOvw",
       "name": "template"
     }
   ]
