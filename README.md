@@ -39,6 +39,8 @@ So this workflow puts an AI analyst in front of every high-severity alert. Webho
 
 3. **Customize the infrastructure context block** in the `Config` node. Use [`infrastructure-context-template.md`](infrastructure-context-template.md) as the starting point. This is the piece that makes the AI analysis actually useful, do not skip it.
 
+   > Prefer to keep this map updatable instead of hardcoded in the workflow? Use the dynamic variant that loads the context from Postgres, a JSON file, or a Google Sheet. See [Dynamic infrastructure context](#dynamic-infrastructure-context-optional) below.
+
 4. **Wire up Wazuh** to fire a webhook on alerts at or above the workflow's default level (9). Add to `/var/ossec/etc/ossec.conf`:
    ```xml
    <integration>
@@ -90,6 +92,26 @@ The infrastructure context block lives here. The prompt is the secret sauce. See
 
 Drop-in for any incoming-webhook channel. Telegram and Teams variants are documented inline in the node's sticky notes.
 
+## Dynamic infrastructure context (optional)
+
+The context block is the difference between a real risk call and the alert rephrased back at you. By
+default it lives in the workflow's Code node, so updating it means editing the workflow every time a
+host changes. That gets old as your cluster grows, and a stale map is worse than no map.
+
+The dynamic variant moves the map into an **updatable data store** and loads it at runtime, so you
+change it in one place and every future analysis uses the current version.
+
+- Import [`wazuh-ai-security-analyzer-dynamic.workflow.json`](wazuh-ai-security-analyzer-dynamic.workflow.json)
+  instead of the static one. It adds a `Load Infra Context` node before `Extract Alert`.
+- Back it with whichever store fits you:
+  - **Postgres** (shipped default): apply [`sql/infra_context.sql`](sql/infra_context.sql), point a read-only credential at it, done.
+  - **JSON file over HTTP** (no database): host [`examples/infra-context.json`](examples/infra-context.json) and fetch it.
+  - **Google Sheets** (most approachable): one row per host, edit it in the browser.
+- If the store is ever unreachable, the workflow falls back to a short built-in summary, so an alert is never blocked.
+
+Full setup for all three, plus how to keep the map honest automatically, is in
+[`dynamic-infrastructure-context.md`](dynamic-infrastructure-context.md).
+
 ## The whole workflow with inline docs
 
 ![Full workflow with sticky notes](screenshots/06-workflow-with-inline-docs.png)
@@ -110,14 +132,20 @@ Full walkthrough with a live brute-force attack triggering the chain end to end:
 
 ```
 .
-├── wazuh-ai-security-analyzer.workflow.json   # The n8n workflow, import-ready
-├── infrastructure-context-template.md         # System-prompt block (customize this)
-├── AI-SETUP-PROMPT.md                         # Companion prompt for AI-assisted deployment
+├── wazuh-ai-security-analyzer.workflow.json         # The n8n workflow (static context), import-ready
+├── wazuh-ai-security-analyzer-dynamic.workflow.json # Same workflow, context loaded from a data store
+├── infrastructure-context-template.md               # System-prompt block for the static version
+├── dynamic-infrastructure-context.md                # Setup for the updatable store (Postgres / JSON / Sheets)
+├── sql/
+│   └── infra_context.sql                            # Postgres schema + view for the dynamic version
+├── examples/
+│   └── infra-context.json                           # Sample map for the no-database (HTTP) option
+├── AI-SETUP-PROMPT.md                               # Companion prompt for AI-assisted deployment
 ├── scripts/
-│   └── wazuh-bruteforce-test.py               # End-to-end pipeline test
-├── screenshots/                               # Workflow + Slack output reference
+│   └── wazuh-bruteforce-test.py                     # End-to-end pipeline test
+├── screenshots/                                     # Workflow + Slack output reference
 ├── README.md
-└── LICENSE                                    # MIT
+└── LICENSE                                          # MIT
 ```
 
 ## Who built this

@@ -1,0 +1,13 @@
+{
+  "_comment": "EXAMPLE infrastructure context for the no-database (HTTP) option. Host this file anywhere the n8n instance can GET it (a static file server, an S3/object URL, a GitHub raw URL, a tiny endpoint). Edit it in one place and every future alert analysis uses the current map. The workflow's node must output { context: \"...\" }. Easiest path: serve the pre-rendered 'context' string below and pass it straight through. If you prefer to keep structured rows, use the 'hosts' array and render it in a Code node (see dynamic-infrastructure-context.md).",
+
+  "context": "Infrastructure context:\n- home lab: 3-node cluster on a flat /24, admin over a mesh VPN\n- vector-db (10.0.0.20): vector database / knowledge bases [internal-only]\n- postgres (10.0.0.21): application databases [internal-only]\n- automation / n8n (10.0.0.22): workflow automation [only /webhook/* exposed via tunnel]\n- siem / wazuh (10.0.0.30): SIEM manager, this analyzer's source [internal-only]\n- active response disabled, monitoring only",
+
+  "hosts": [
+    { "name": "home lab", "ip": null, "role": "3-node cluster on a flat /24, admin over a mesh VPN", "exposure": "internal-only except where noted" },
+    { "name": "vector-db", "ip": "10.0.0.20", "role": "vector database / knowledge bases", "exposure": "internal-only" },
+    { "name": "postgres", "ip": "10.0.0.21", "role": "application databases", "exposure": "internal-only" },
+    { "name": "automation / n8n", "ip": "10.0.0.22", "role": "workflow automation", "exposure": "only /webhook/* exposed via tunnel" },
+    { "name": "siem / wazuh", "ip": "10.0.0.30", "role": "SIEM manager, this analyzer's source", "exposure": "internal-only" }
+  ]
+}

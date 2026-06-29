@@ -66,6 +66,12 @@ with reassurance.
    - Risk overrides (what should ALWAYS be CRITICAL regardless of source)
    Generate a finished context block from my answers and tell me exactly
    which n8n node and field to paste it into.
+   If I say I want this map to be updatable instead of hardcoded, switch me
+   to the dynamic variant: have me import
+   `wazuh-ai-security-analyzer-dynamic.workflow.json` and follow
+   `dynamic-infrastructure-context.md` to back it with Postgres, a JSON file
+   over HTTP, or a Google Sheet, plus a read-only credential. Put the same
+   finished context I generated into that store instead of the Code node.
 
 6. **End-to-end test.** Walk me through running the included
    `scripts/wazuh-bruteforce-test.py` against a test target I authorize.
